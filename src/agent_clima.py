@@ -73,19 +73,24 @@ class ClimateAgent:
 
 # ===== FASTAPI =====
 
+class CityRequest(BaseModel):
+    city: str
+
+
+class ClimateResponse(BaseModel):
+    response: str
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Climate Agent MAF")
     api_key = os.getenv("OPENWEATHER_API_KEY", "")
     weather_client = OpenWeatherClient(api_key=api_key)
     agent = ClimateAgent(weather_client=weather_client)
 
-    class CityRequest(BaseModel):
-        city: str
-
-    @app.post("/climate")
-    def get_climate(req: CityRequest) -> Dict[str, str]:
+    @app.post("/climate", response_model=ClimateResponse)
+    def get_climate(req: CityRequest) -> ClimateResponse:
         try:
-            return {"response": agent.act(req.city)}
+            return ClimateResponse(response=agent.act(req.city))
         except Exception as exc:  # pragma: no cover
             raise HTTPException(status_code=500, detail=str(exc))
 
