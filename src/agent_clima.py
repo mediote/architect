@@ -60,7 +60,7 @@ class ClimateAgent:
         return data
 
     @staticmethod
-    def decide(city: str, data: Dict[str, Any]) -> str:
+    def decide_response(city: str, data: Dict[str, Any]) -> str:
         main = data.get("main", {})
         weather = (data.get("weather") or [{}])[0]
         temp = main.get("temp", "?")
@@ -69,7 +69,7 @@ class ClimateAgent:
 
     def act(self) -> str:
         data = self.perceive()
-        return self.decide(self.city, data)
+        return self.decide_response(self.city, data)
 
 
 # ===== FASTAPI =====
