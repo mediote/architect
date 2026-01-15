@@ -1,6 +1,6 @@
 # Architect – Climate Agent
 
-Architect is a minimal **memory-augmented AI agent** implemented as a **FastAPI** service.  
+Architect is a minimal **memory-augmented AI agent** implemented as a **FastAPI** service.
 It demonstrates a clean agent loop (**perceive → decide → act**) combined with an external data source (OpenWeather) and short-term memory.
 
 ## Overview
