@@ -1,56 +1,89 @@
-# Refatorado: Agent de Clima com MAF + FastAPI
-from fastapi import FastAPI
+"""
+Climate Agent using a simple Memory-Augmented Framework (MAF) and FastAPI.
+"""
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import requests, time, os
 from typing import List, Dict, Any
+import os
+import time
+import requests
 
 # ===== MAF CORE =====
 class Memory:
-    def __init__(self, max_size: int = 100):
+    """Simple bounded in-memory event store."""
+
+    def __init__(self, max_size: int = 100) -> None:
         self.max_size = max_size
-        self.events: List[Dict[str, Any]] = []
+        self._events: List[Dict[str, Any]] = []
 
-    def add(self, data: Dict[str, Any]):
-        self.events.append(data)
-        if len(self.events) > self.max_size:
-            self.events.pop(0)
+    def add(self, data: Dict[str, Any]) -> None:
+        self._events.append(data)
+        if len(self._events) > self.max_size:
+            self._events.pop(0)
 
-    def all(self):
-        return self.events
+    def all(self) -> List[Dict[str, Any]]:
+        return list(self._events)
+
 
 class ClimateAgent:
-    def __init__(self, city: str, api_key: str):
+    """Agent responsible for perceiving climate data and producing a response."""
+
+    BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+
+    def __init__(self, city: str, api_key: str, memory: Memory | None = None) -> None:
         self.city = city
         self.api_key = api_key
-        self.memory = Memory()
+        self.memory = memory or Memory()
+        self._session = requests.Session()
 
     def perceive(self) -> Dict[str, Any]:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={self.city}&appid={self.api_key}&units=metric&lang=pt_br"
-        data = requests.get(url, timeout=10).json()
+        if not self.api_key:
+            raise RuntimeError("OPENWEATHER_API_KEY is not configured")
+
+        params = {
+            "q": self.city,
+            "appid": self.api_key,
+            "units": "metric",
+            "lang": "pt_br",
+        }
+        response = self._session.get(self.BASE_URL, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
         event = {"timestamp": time.time(), "data": data}
         self.memory.add(event)
         return data
 
     def decide(self, data: Dict[str, Any]) -> str:
-        temp = data['main']['temp']
-        desc = data['weather'][0]['description']
-        return f"Clima em {self.city}: {temp}°C, {desc}"  
+        main = data.get("main", {})
+        weather = (data.get("weather") or [{}])[0]
+        temp = main.get("temp", "?")
+        desc = weather.get("description", "?")
+        return f"Clima em {self.city}: {temp}°C, {desc}"
 
     def act(self) -> str:
-        return self.decide(self.perceive())
+        data = self.perceive()
+        return self.decide(data)
+
 
 # ===== FASTAPI =====
 app = FastAPI(title="Climate Agent MAF")
 API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-agent = ClimateAgent("Sao Paulo", API_KEY)
+agent = ClimateAgent(city="Sao Paulo", api_key=API_KEY)
+
 
 class CityRequest(BaseModel):
     city: str
 
+
 @app.get("/climate")
-def get_climate():
-    return {"response": agent.act()}
+def get_climate() -> Dict[str, str]:
+    try:
+        return {"response": agent.act()}
+    except Exception as exc:  # pragma: no cover - API safety
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 @app.get("/memory")
-def get_memory():
+def get_memory() -> List[Dict[str, Any]]:
     return agent.memory.all()
