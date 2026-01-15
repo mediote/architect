@@ -2,15 +2,15 @@
 
 ## Hello World
 
-Este é o repositório **Architect**.
+Este repositório demonstra um exemplo simples de **Hello World** para validar a estrutura inicial do projeto.
 
-### Exemplo Hello World
+### Exemplo em Bash
 
 ```bash
 echo "Hello, World!"
 ```
 
-Ou em Python:
+### Exemplo em Python
 
 ```python
 print("Hello, World!")
@@ -18,4 +18,4 @@ print("Hello, World!")
 
 ---
 
-Projeto inicial criado para servir como base de arquitetura.
+Projeto base para experimentos de arquitetura e organização de código.
