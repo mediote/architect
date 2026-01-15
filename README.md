@@ -1,34 +1,29 @@
-# Architect
+# Climate Agent com MAF + FastAPI
 
-## Agente de Clima (MAF)
+Este projeto implementa um **Agente de Clima** seguindo o paradigma **MAF (Multi-Agent Framework)**, exposto via **FastAPI**.
 
-Este projeto agora inclui um **Agente de Clima** utilizando um modelo simples de **MAF (Multi-Agent Framework)**.
+## 🧠 Arquitetura MAF
+- **Percepção**: coleta dados climáticos da OpenWeather API
+- **Decisão**: interpreta dados atuais
+- **Ação**: responde via API REST
+- **Memória**: histórico temporal em memória
 
-O agente segue o ciclo clássico:
-- **Perceber** (consultar API de clima)
-- **Decidir** (interpretar dados)
-- **Agir** (retornar resposta textual)
-
-### Requisitos
-
-```bash
-pip install requests
-```
-
-### Variável de ambiente
-
-Configure a chave da API OpenWeather:
+## 🚀 Execução
 
 ```bash
-export OPENWEATHER_API_KEY="sua_chave_aqui"
+export OPENWEATHER_API_KEY=SUACHAVE
+pip install fastapi uvicorn requests
+uvicorn src.agent_clima:app --reload
 ```
 
-### Executar
+## 📡 Endpoints
+- `GET /climate` → clima atual
+- `GET /memory` → memória interna do agente
 
-```bash
-python src/agent_clima.py
-```
+## 📦 Extensões Futuras
+- Persistência em banco
+- Múltiplos agentes
+- Planejamento e aprendizado
 
----
-
-Projeto base para experimentos de arquitetura, agentes e organização de código.
+## ✅ Objetivo
+Demonstrar agentes autônomos modulares aplicados a sistemas reais.

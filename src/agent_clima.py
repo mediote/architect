@@ -1,99 +1,56 @@
-"""
-Agente de Clima usando um MAF (Multi-Agent Framework) simplificado.
-Inclui percepcao, decisao, acao e memoria interna para historico de estados.
-"""
+# Refatorado: Agent de Clima com MAF + FastAPI
+from fastapi import FastAPI
+from pydantic import BaseModel
+import requests, time, os
+from typing import List, Dict, Any
 
-import requests
-import time
-from typing import Dict, List, Any
-
-
-class AgentMemory:
-    """Memoria simples baseada em historico temporal."""
-
-    def __init__(self, max_size: int = 50):
+# ===== MAF CORE =====
+class Memory:
+    def __init__(self, max_size: int = 100):
         self.max_size = max_size
-        self._events: List[Dict[str, Any]] = []
+        self.events: List[Dict[str, Any]] = []
 
-    def add(self, event: Dict[str, Any]) -> None:
-        self._events.append(event)
-        if len(self._events) > self.max_size:
-            self._events.pop(0)
+    def add(self, data: Dict[str, Any]):
+        self.events.append(data)
+        if len(self.events) > self.max_size:
+            self.events.pop(0)
 
-    def last(self) -> Dict[str, Any] | None:
-        return self._events[-1] if self._events else None
-
-    def all(self) -> List[Dict[str, Any]]:
-        return list(self._events)
-
+    def all(self):
+        return self.events
 
 class ClimateAgent:
-    """Agente autonomo de clima seguindo o ciclo MAF: perceber, decidir, agir."""
-
-    def __init__(self, city: str, api_key: str, memory_size: int = 20):
+    def __init__(self, city: str, api_key: str):
         self.city = city
         self.api_key = api_key
-        self.memory = AgentMemory(memory_size)
+        self.memory = Memory()
 
-    # === PERCEPCAO ===
     def perceive(self) -> Dict[str, Any]:
-        url = (
-            "https://api.openweathermap.org/data/2.5/weather"
-            f"?q={self.city}&appid={self.api_key}&units=metric&lang=pt_br"
-        )
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-
-        percept = {
-            "timestamp": time.time(),
-            "raw": data,
-        }
-        self.memory.add(percept)
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={self.city}&appid={self.api_key}&units=metric&lang=pt_br"
+        data = requests.get(url, timeout=10).json()
+        event = {"timestamp": time.time(), "data": data}
+        self.memory.add(event)
         return data
 
-    # === DECISAO ===
     def decide(self, data: Dict[str, Any]) -> str:
-        temp = data["main"]["temp"]
-        humidity = data["main"]["humidity"]
-        desc = data["weather"][0]["description"]
+        temp = data['main']['temp']
+        desc = data['weather'][0]['description']
+        return f"Clima em {self.city}: {temp}°C, {desc}"  
 
-        trend = "estavel"
-        last = self.memory.last()
-        if last and "raw" in last:
-            try:
-                last_temp = last["raw"]["main"]["temp"]
-                if temp > last_temp:
-                    trend = "aquecendo"
-                elif temp < last_temp:
-                    trend = "esfriando"
-            except Exception:
-                pass
-
-        return (
-            f"Clima atual em {self.city}: {temp}°C, {desc}, "
-            f"umidade {humidity}%. Tendencia: {trend}."
-        )
-
-    # === ACAO ===
     def act(self) -> str:
-        data = self.perceive()
-        decision = self.decide(data)
-        return decision
+        return self.decide(self.perceive())
 
-    # === METODOS AUXILIARES ===
-    def recall_history(self) -> List[Dict[str, Any]]:
-        """Retorna o historico completo da memoria do agente."""
-        return self.memory.all()
+# ===== FASTAPI =====
+app = FastAPI(title="Climate Agent MAF")
+API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
+agent = ClimateAgent("Sao Paulo", API_KEY)
 
+class CityRequest(BaseModel):
+    city: str
 
-if __name__ == "__main__":
-    # Exemplo de uso
-    import os
+@app.get("/climate")
+def get_climate():
+    return {"response": agent.act()}
 
-    api_key = os.getenv("OPENWEATHER_API_KEY")
-    if not api_key:
-        raise RuntimeError("Defina a variavel OPENWEATHER_API_KEY")
-
-    agent = ClimateAgent("Sao Paulo", api_key)
-    print(agent.act())
+@app.get("/memory")
+def get_memory():
+    return agent.memory.all()
