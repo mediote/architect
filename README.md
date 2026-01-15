@@ -1,30 +1,34 @@
 # Architect
 
-## Hello World
+## Agente de Clima (MAF)
 
-Este repositório demonstra um exemplo simples de **Hello World** para validar a estrutura inicial do projeto e servir como ponto de partida para estudos de arquitetura de software.
+Este projeto agora inclui um **Agente de Clima** utilizando um modelo simples de **MAF (Multi-Agent Framework)**.
 
-### Exemplo em Bash
+O agente segue o ciclo clássico:
+- **Perceber** (consultar API de clima)
+- **Decidir** (interpretar dados)
+- **Agir** (retornar resposta textual)
 
-```bash
-echo "Hello, World!"
-```
-
-### Exemplo em Python
-
-```python
-print("Hello, World!")
-```
-
-## Como usar
-
-Clone o repositório e execute um dos exemplos acima conforme a linguagem desejada.
+### Requisitos
 
 ```bash
-git clone https://github.com/mediote/architect.git
-cd architect
+pip install requests
+```
+
+### Variável de ambiente
+
+Configure a chave da API OpenWeather:
+
+```bash
+export OPENWEATHER_API_KEY="sua_chave_aqui"
+```
+
+### Executar
+
+```bash
+python src/agent_clima.py
 ```
 
 ---
 
-Projeto base para experimentos de arquitetura e organização de código.
+Projeto base para experimentos de arquitetura, agentes e organização de código.
