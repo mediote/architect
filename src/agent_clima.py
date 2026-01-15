@@ -1,5 +1,5 @@
 """
-Refactored Climate Agent using a Memory-Augmented Framework (MAF) and FastAPI.
+Climate Agent using a Memory-Augmented Framework (MAF) with FastAPI.
 """
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -49,14 +49,13 @@ class OpenWeatherClient:
 class ClimateAgent:
     """Agent responsible for perceiving climate data and producing a response."""
 
-    def __init__(self, city: str, weather_client: OpenWeatherClient, memory: Optional[Memory] = None) -> None:
-        self.city = city
+    def __init__(self, weather_client: OpenWeatherClient, memory: Optional[Memory] = None) -> None:
         self.weather_client = weather_client
         self.memory = memory or Memory()
 
-    def perceive(self) -> Dict[str, Any]:
-        data = self.weather_client.fetch_city_weather(self.city)
-        self.memory.add({"timestamp": time.time(), "data": data})
+    def perceive(self, city: str) -> Dict[str, Any]:
+        data = self.weather_client.fetch_city_weather(city)
+        self.memory.add({"timestamp": time.time(), "city": city, "data": data})
         return data
 
     @staticmethod
@@ -67,30 +66,34 @@ class ClimateAgent:
         desc = weather.get("description", "?")
         return f"Clima em {city}: {temp}°C, {desc}"
 
-    def act(self) -> str:
-        data = self.perceive()
-        return self.decide_response(self.city, data)
+    def act(self, city: str) -> str:
+        data = self.perceive(city)
+        return self.decide_response(city, data)
 
 
 # ===== FASTAPI =====
-app = FastAPI(title="Climate Agent MAF")
-API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-weather_client = OpenWeatherClient(api_key=API_KEY)
-agent = ClimateAgent(city="Sao Paulo", weather_client=weather_client)
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Climate Agent MAF")
+    api_key = os.getenv("OPENWEATHER_API_KEY", "")
+    weather_client = OpenWeatherClient(api_key=api_key)
+    agent = ClimateAgent(weather_client=weather_client)
+
+    class CityRequest(BaseModel):
+        city: str
+
+    @app.post("/climate")
+    def get_climate(req: CityRequest) -> Dict[str, str]:
+        try:
+            return {"response": agent.act(req.city)}
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    @app.get("/memory")
+    def get_memory() -> List[Dict[str, Any]]:
+        return agent.memory.all()
+
+    return app
 
 
-class CityRequest(BaseModel):
-    city: str
-
-
-@app.get("/climate")
-def get_climate() -> Dict[str, str]:
-    try:
-        return {"response": agent.act()}
-    except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@app.get("/memory")
-def get_memory() -> List[Dict[str, Any]]:
-    return agent.memory.all()
+app = create_app()
