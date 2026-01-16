@@ -13,13 +13,19 @@ class ClimateAgent:
 
     def perceive(self, city: str) -> Dict[str, Any]:
         """Fetch and store raw weather data for a given city."""
-        data: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
+        try:
+            data: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
+        except Exception as exc:
+            data = {"error": str(exc)}
         self._store_memory(city, data)
         return data
 
     @staticmethod
     def decide_response(city: str, data: Dict[str, Any]) -> str:
         """Convert raw weather data into a user-facing string."""
+        if "error" in data:
+            return f"Erro ao obter clima para {city}: {data['error']}"
+
         main: Dict[str, Any] = data.get("main", {})
         weather: Dict[str, Any] = (data.get("weather") or [{}])[0]
         temperature = main.get("temp", "?")
