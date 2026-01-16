@@ -3,26 +3,33 @@ import time
 from .memory import Memory
 from .weather import OpenWeatherClient
 
+
 class ClimateAgent:
-    """Agent responsible for perceiving climate data and producing a response."""
+    """Agent responsible for retrieving climate data and generating human-readable responses."""
 
     def __init__(self, weather_client: OpenWeatherClient, memory: Optional[Memory] = None) -> None:
-        self.weather_client = weather_client
-        self.memory = memory or Memory()
+        self.weather_client: OpenWeatherClient = weather_client
+        self.memory: Memory = memory or Memory()
 
     def perceive(self, city: str) -> Dict[str, Any]:
-        data = self.weather_client.fetch_city_weather(city)
-        self.memory.add({"timestamp": time.time(), "city": city, "data": data})
+        """Fetch and store raw weather data for a given city."""
+        data: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
+        self._store_memory(city, data)
         return data
 
     @staticmethod
     def decide_response(city: str, data: Dict[str, Any]) -> str:
-        main = data.get("main", {})
-        weather = (data.get("weather") or [{}])[0]
-        temp = main.get("temp", "?")
-        desc = weather.get("description", "?")
-        return f"Clima em {city}: {temp}°C, {desc}"
+        """Convert raw weather data into a user-facing string."""
+        main: Dict[str, Any] = data.get("main", {})
+        weather: Dict[str, Any] = (data.get("weather") or [{}])[0]
+        temperature = main.get("temp", "?")
+        description = weather.get("description", "?")
+        return f"Clima em {city}: {temperature}°C, {description}"
 
     def act(self, city: str) -> str:
+        """High-level execution: perceive the environment and act on it."""
         data = self.perceive(city)
         return self.decide_response(city, data)
+
+    def _store_memory(self, city: str, data: Dict[str, Any]) -> None:
+        self.memory.add({"timestamp": time.time(), "city": city, "data": data})
