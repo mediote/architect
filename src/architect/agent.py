@@ -11,17 +11,16 @@ class ClimateAgent:
         self.weather_client: OpenWeatherClient = weather_client
         self.memory: Memory = memory or Memory()
 
-    def perceive(self, city: str) -> Dict[str, Any]:
+    def _perceive(self, city: str) -> Dict[str, Any]:
         """Fetch and store raw weather data for a given city."""
         try:
-            data: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
+            result: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
         except Exception as exc:
-            data = {"error": str(exc)}
-        self._store_memory(city, data)
-        return data
+            result = {"error": str(exc)}
+        self._store_memory(city, result)
+        return result
 
-    @staticmethod
-    def decide_response(city: str, data: Dict[str, Any]) -> str:
+    def _format_response(self, city: str, data: Dict[str, Any]) -> str:
         """Convert raw weather data into a user-facing string."""
         if "error" in data:
             return f"Erro ao obter clima para {city}: {data['error']}"
@@ -34,8 +33,8 @@ class ClimateAgent:
 
     def act(self, city: str) -> str:
         """High-level execution: perceive the environment and act on it."""
-        data = self.perceive(city)
-        return self.decide_response(city, data)
+        data = self._perceive(city)
+        return self._format_response(city, data)
 
     def _store_memory(self, city: str, data: Dict[str, Any]) -> None:
         self.memory.add({"timestamp": time.time(), "city": city, "data": data})
