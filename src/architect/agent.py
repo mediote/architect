@@ -2,39 +2,39 @@ from typing import Dict, Any, Optional
 import time
 from .memory import Memory
 from .weather import OpenWeatherClient
+from .formatter import ClimateResponseFormatter
 
 
 class ClimateAgent:
     """Agent responsible for retrieving climate data and generating human-readable responses."""
 
-    def __init__(self, weather_client: OpenWeatherClient, memory: Optional[Memory] = None) -> None:
-        self.weather_client: OpenWeatherClient = weather_client
-        self.memory: Memory = memory or Memory()
+    def __init__(
+        self,
+        weather_client: OpenWeatherClient,
+        memory: Optional[Memory] = None,
+        formatter: Optional[ClimateResponseFormatter] = None,
+    ) -> None:
+        self.weather_client = weather_client
+        self.memory = memory or Memory()
+        self.formatter = formatter or ClimateResponseFormatter()
 
-    def _perceive(self, city: str) -> Dict[str, Any]:
+    def fetch_weather(self, city: str) -> Dict[str, Any]:
         """Fetch and store raw weather data for a given city."""
         try:
-            result: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
+            data: Dict[str, Any] = self.weather_client.fetch_city_weather(city)
         except Exception as exc:
-            result = {"error": str(exc)}
-        self._store_memory(city, result)
-        return result
+            data = {"error": str(exc)}
+        self._store_memory(city, data)
+        return data
 
-    def _format_response(self, city: str, data: Dict[str, Any]) -> str:
-        """Convert raw weather data into a user-facing string."""
-        if "error" in data:
-            return f"Erro ao obter clima para {city}: {data['error']}"
-
-        main: Dict[str, Any] = data.get("main", {})
-        weather: Dict[str, Any] = (data.get("weather") or [{}])[0]
-        temperature = main.get("temp", "?")
-        description = weather.get("description", "?")
-        return f"Clima em {city}: {temperature}°C, {description}"
+    def generate_response(self, city: str, data: Dict[str, Any]) -> str:
+        """Generate a user-facing response from raw weather data."""
+        return self.formatter.format(city, data)
 
     def act(self, city: str) -> str:
-        """High-level execution: perceive the environment and act on it."""
-        data = self._perceive(city)
-        return self._format_response(city, data)
+        """High-level execution: fetch weather data and generate a response."""
+        data = self.fetch_weather(city)
+        return self.generate_response(city, data)
 
     def _store_memory(self, city: str, data: Dict[str, Any]) -> None:
         self.memory.add({"timestamp": time.time(), "city": city, "data": data})
